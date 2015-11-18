@@ -49,6 +49,9 @@ public class Nanomize {
 	private Map<String,String> mainNodeMap = new HashMap<>();
 	private Map<String,Set<String>> sideNodeMap = new HashMap<>();
 
+	private int maxTripleCount = 0;
+	private Map<String,Integer> tripleCount = new HashMap<>();
+
 	public Nanomize(File file) {
 		this.file = file;
 		String n = file.getName();
@@ -67,8 +70,7 @@ public class Nanomize {
 
 	public void run() throws OpenRDFException, IOException {
 		System.out.println("Processing file: " + file);
-		InputStream in = new FileInputStream(file);
-		if (gzipped) in = new GZIPInputStream(in);
+		InputStream in = getInputStream();
 		try {
 			readData(in);
 		} finally {
@@ -77,7 +79,19 @@ public class Nanomize {
 		while (!mergeComplete) {
 			mergeNodes();
 		}
+		in = getInputStream();
+		try {
+			makePartition(in);
+		} finally {
+			in.close();
+		}
 		showResults();
+	}
+
+	private InputStream getInputStream() throws IOException {
+		InputStream in = new FileInputStream(file);
+		if (gzipped) in = new GZIPInputStream(in);
+		return in;
 	}
 
 	private void readData(InputStream in) throws OpenRDFException, IOException {
@@ -151,6 +165,27 @@ public class Nanomize {
 		return node;
 	}
 
+	private void makePartition(InputStream in) throws OpenRDFException, IOException {
+		RDFParser p = NanopubUtils.getParser(format);
+		p.setRDFHandler(new RDFHandlerBase() {
+
+			@Override
+			public void handleStatement(Statement st) throws RDFHandlerException {
+				if (st.getSubject() instanceof BNode) {
+					throw new RuntimeException("Unexpected blank node encountered");
+				}
+				String s = st.getSubject().stringValue();
+				if (mainNodeMap.containsKey(s)) s = mainNodeMap.get(s);
+				if (!tripleCount.containsKey(s)) tripleCount.put(s, 0);
+				int c = tripleCount.get(s) + 1;
+				tripleCount.put(s, c);
+				if (c > maxTripleCount) maxTripleCount = c;
+			}
+
+		});
+		p.parse(in, "");
+	}
+
 	private void showResults() {
 		System.out.println("MAIN NODES:");
 		for (String node : sideNodeMap.keySet()) {
@@ -158,6 +193,15 @@ public class Nanomize {
 			for (String side : sideNodeMap.get(node)) {
 				System.out.println("  " + side);
 			}
+		}
+		System.out.println("PARTITION SIZE DISTRIBUTION:");
+		int[] countDist = new int[maxTripleCount+1];
+		for (String mainNode : tripleCount.keySet()) {
+			countDist[tripleCount.get(mainNode)]++;
+		}
+		for (int i = 1 ; i <= maxTripleCount ; i++) {
+			if (countDist[i] == 0) continue;
+			System.out.println(i + ": " + countDist[i]);
 		}
 	}
 
