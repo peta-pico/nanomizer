@@ -54,6 +54,8 @@ public class Nanomize {
 	private int maxTripleCount = 0;
 	private Map<String,Integer> tripleCount = new HashMap<>();
 
+	private boolean blankNodesEncountered = false;
+
 	public Nanomize(File file) {
 		this.file = file;
 		String n = file.getName();
@@ -114,7 +116,8 @@ public class Nanomize {
 			@Override
 			public void handleStatement(Statement st) throws RDFHandlerException {
 				if (st.getSubject() instanceof BNode) {
-					throw new RuntimeException("Unexpected blank node encountered");
+					blankNodesEncountered = true;
+					return;
 				}
 				String s = st.getSubject().stringValue();
 				if (!(st.getObject() instanceof URI)) return;
@@ -184,9 +187,6 @@ public class Nanomize {
 
 			@Override
 			public void handleStatement(Statement st) throws RDFHandlerException {
-				if (st.getSubject() instanceof BNode) {
-					throw new RuntimeException("Unexpected blank node encountered");
-				}
 				String s = st.getSubject().stringValue();
 				if (mainNodeMap.containsKey(s)) s = mainNodeMap.get(s);
 				if (!tripleCount.containsKey(s)) tripleCount.put(s, 0);
@@ -207,6 +207,7 @@ public class Nanomize {
 				System.out.println("  " + side);
 			}
 		}
+
 		System.out.println("PARTITION SIZE DISTRIBUTION:");
 		int[] countDist = new int[maxTripleCount+1];
 		for (String mainNode : tripleCount.keySet()) {
@@ -215,6 +216,10 @@ public class Nanomize {
 		for (int i = 1 ; i <= maxTripleCount ; i++) {
 			if (countDist[i] == 0) continue;
 			System.out.println(i + ": " + countDist[i]);
+		}
+
+		if (blankNodesEncountered) {
+			System.out.println("WARNING: blank nodes encountered");
 		}
 	}
 
