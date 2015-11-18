@@ -22,6 +22,8 @@ import org.openrdf.rio.RDFParser;
 import org.openrdf.rio.Rio;
 import org.openrdf.rio.helpers.RDFHandlerBase;
 
+import com.google.common.collect.ImmutableSet;
+
 public class Nanomize {
 
 	public static void main(String[] args) throws OpenRDFException, IOException {
@@ -32,12 +34,16 @@ public class Nanomize {
 	}
 
 	private static final MimetypesFileTypeMap mimeMap = new MimetypesFileTypeMap();
+	private static final Set<String> EMPTYSET = ImmutableSet.of();
 
 	private File file;
 	private RDFFormat format;
 
 	private Map<String,Set<String>> fwLinkMap = new HashMap<>();
 	private Map<String,Set<String>> bwLinkMap = new HashMap<>();
+
+	boolean mergeComplete = false;
+
 	private Map<String,String> mainNodeMap = new HashMap<>();
 	private Map<String,Set<String>> sideNodeMap = new HashMap<>();
 
@@ -46,10 +52,10 @@ public class Nanomize {
 		String n = file.getName();
 		format = Rio.getParserFormatForMIMEType(mimeMap.getContentType(n));
 		if (format == null || !format.supportsContexts()) {
-			format = Rio.getParserFormatForFileName(n, RDFFormat.NQUADS);
+			format = Rio.getParserFormatForFileName(n, RDFFormat.NTRIPLES);
 		}
 		if (!format.supportsContexts()) {
-			format = RDFFormat.NQUADS;
+			format = RDFFormat.NTRIPLES;
 		}
 	}
 
@@ -61,7 +67,9 @@ public class Nanomize {
 		} finally {
 			in.close();
 		}
-		mergeNodes();
+		while (!mergeComplete) {
+			mergeNodes();
+		}
 		showResults();
 	}
 
@@ -85,6 +93,7 @@ public class Nanomize {
 	}
 
 	private void addLink(String subj, String obj) {
+		if (subj.equals(obj)) return;
 		if (!fwLinkMap.containsKey(subj)) fwLinkMap.put(subj, new HashSet<String>());
 		fwLinkMap.get(subj).add(obj);
 		if (!bwLinkMap.containsKey(obj)) bwLinkMap.put(obj, new HashSet<String>());
@@ -92,13 +101,36 @@ public class Nanomize {
 	}
 
 	private void mergeNodes() {
+		System.out.println("RUN MERGE...");
+		boolean mergeHappened = false;
 		for (String node : bwLinkMap.keySet()) {
 			Set<String> bwLinks = bwLinkMap.get(node);
 			if (bwLinks.size() != 1) continue;
+			bwLinkMap.put(node, EMPTYSET); // so we get here at most once per node
 			String m = bwLinks.iterator().next();
 			System.out.println("Merge " + node + " into " + m);
-			// TODO
+			mainNodeMap.put(node, m);
+			if (!sideNodeMap.containsKey(m)) sideNodeMap.put(m, new HashSet<String>());
+			Set<String> sideNodes = sideNodeMap.get(m);
+			sideNodes.add(node);
+			if (sideNodeMap.containsKey(node)) {
+				for (String s : sideNodeMap.get(node)) {
+					if (s.equals(m)) continue;
+					mainNodeMap.put(s, m);
+				}
+				sideNodes.addAll(sideNodeMap.get(node));
+				sideNodes.remove(m); // remove main node as its own side node, if present
+				sideNodeMap.remove(node);
+			}
+			if (fwLinkMap.containsKey(node)) {
+				if (!fwLinkMap.containsKey(m)) fwLinkMap.put(m, new HashSet<String>());
+				fwLinkMap.get(m).addAll(fwLinkMap.get(node));
+				fwLinkMap.get(m).remove(m); // remove main node as its own forward link, if present
+				fwLinkMap.remove(node);
+			}
+			mergeHappened = true;
 		}
+		if (!mergeHappened) mergeComplete = true;
 	}
 
 	private void showResults() {
