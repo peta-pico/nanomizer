@@ -106,9 +106,21 @@ public class Nanomize {
 		for (String node : bwLinkMap.keySet()) {
 			Set<String> bwLinks = bwLinkMap.get(node);
 			if (bwLinks.size() != 1) continue;
-			bwLinkMap.put(node, EMPTYSET); // so we get here at most once per node
 			String m = bwLinks.iterator().next();
 			System.out.println("Merge " + node + " into " + m);
+			if (fwLinkMap.containsKey(node)) {
+				for (String s : fwLinkMap.get(node)) {
+					if (s.equals(m)) continue;
+					Set<String> bw = bwLinkMap.get(getMainNode(s));
+					bw.remove(node);
+					bw.add(m);
+				}
+				if (!fwLinkMap.containsKey(m)) fwLinkMap.put(m, new HashSet<String>());
+				fwLinkMap.get(m).addAll(fwLinkMap.get(node));
+				fwLinkMap.get(m).remove(m); // remove main node as its own forward link, if present
+				fwLinkMap.remove(node);
+			}
+			bwLinkMap.put(node, EMPTYSET); // so we don't process the same node again
 			mainNodeMap.put(node, m);
 			if (!sideNodeMap.containsKey(m)) sideNodeMap.put(m, new HashSet<String>());
 			Set<String> sideNodes = sideNodeMap.get(m);
@@ -122,15 +134,14 @@ public class Nanomize {
 				sideNodes.remove(m); // remove main node as its own side node, if present
 				sideNodeMap.remove(node);
 			}
-			if (fwLinkMap.containsKey(node)) {
-				if (!fwLinkMap.containsKey(m)) fwLinkMap.put(m, new HashSet<String>());
-				fwLinkMap.get(m).addAll(fwLinkMap.get(node));
-				fwLinkMap.get(m).remove(m); // remove main node as its own forward link, if present
-				fwLinkMap.remove(node);
-			}
 			mergeHappened = true;
 		}
 		if (!mergeHappened) mergeComplete = true;
+	}
+
+	private String getMainNode(String node) {
+		if (mainNodeMap.containsKey(node)) return mainNodeMap.get(node);
+		return node;
 	}
 
 	private void showResults() {
