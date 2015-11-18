@@ -1,1 +1,10 @@
 *~
+/.classpath
+/.project
+/.*
+/target
+/bin
+/scratch
+/classpath.txt
+*.log
+local.*
