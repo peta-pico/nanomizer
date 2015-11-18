@@ -36,7 +36,8 @@ public class Nanomize {
 	private File file;
 	private RDFFormat format;
 
-	private Map<String,Set<String>> linkMap = new HashMap<String, Set<String>>();
+	private Map<String,Set<String>> fwLinkMap = new HashMap<String, Set<String>>();
+	private Map<String,Set<String>> bwLinkMap = new HashMap<String, Set<String>>();
 
 	public Nanomize(File file) {
 		this.file = file;
@@ -73,17 +74,28 @@ public class Nanomize {
 				String s = st.getSubject().stringValue();
 				if (!(st.getObject() instanceof URI)) return;
 				String o = st.getObject().stringValue();
-				if (!linkMap.containsKey(o)) linkMap.put(o, new HashSet<String>());
-				linkMap.get(o).add(s);
+				addLink(s, o);
 			}
 
 		});
 		p.parse(in, "");
 	}
 
+	private void addLink(String subj, String obj) {
+		if (!fwLinkMap.containsKey(subj)) fwLinkMap.put(subj, new HashSet<String>());
+		fwLinkMap.get(subj).add(obj);
+		if (!bwLinkMap.containsKey(obj)) bwLinkMap.put(obj, new HashSet<String>());
+		bwLinkMap.get(obj).add(subj);
+	}
+
 	private void showResults() {
-		for (String node : linkMap.keySet()) {
-			System.out.println(node + ": " + linkMap.get(node).size());
+		System.out.println("FORWARD LINKS:");
+		for (String node : fwLinkMap.keySet()) {
+			System.out.println(node + ": " + fwLinkMap.get(node).size());
+		}
+		System.out.println("BACKWARD LINKS:");
+		for (String node : bwLinkMap.keySet()) {
+			System.out.println(node + ": " + bwLinkMap.get(node).size());
 		}
 	}
 
