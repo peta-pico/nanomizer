@@ -4,12 +4,18 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import javax.activation.MimetypesFileTypeMap;
 
 import org.nanopub.NanopubUtils;
 import org.openrdf.OpenRDFException;
+import org.openrdf.model.BNode;
 import org.openrdf.model.Statement;
+import org.openrdf.model.URI;
 import org.openrdf.rio.RDFFormat;
 import org.openrdf.rio.RDFHandlerException;
 import org.openrdf.rio.RDFParser;
@@ -30,6 +36,11 @@ public class Nanomize {
 	private File file;
 	private RDFFormat format;
 
+	private Map<String,Set<String>> fwLinkMap = new HashMap<>();
+	private Map<String,Set<String>> bwLinkMap = new HashMap<>();
+	private Map<String,String> mainNodeMap = new HashMap<>();
+	private Map<String,Set<String>> sideNodeMap = new HashMap<>();
+
 	public Nanomize(File file) {
 		this.file = file;
 		String n = file.getName();
@@ -46,24 +57,59 @@ public class Nanomize {
 		System.out.println("Processing file: " + file);
 		InputStream in = new FileInputStream(file);
 		try {
-			processStream(in);
+			readData(in);
 		} finally {
 			in.close();
 		}
+		mergeNodes();
+		showResults();
 	}
 
-	private void processStream(InputStream in) throws OpenRDFException, IOException {
+	private void readData(InputStream in) throws OpenRDFException, IOException {
 		RDFParser p = NanopubUtils.getParser(format);
 		p.setRDFHandler(new RDFHandlerBase() {
 
 			@Override
 			public void handleStatement(Statement st) throws RDFHandlerException {
-				// TODO
-				System.out.println(st);
+				if (st.getSubject() instanceof BNode) {
+					throw new RuntimeException("Unexpected blank node encountered");
+				}
+				String s = st.getSubject().stringValue();
+				if (!(st.getObject() instanceof URI)) return;
+				String o = st.getObject().stringValue();
+				addLink(s, o);
 			}
 
 		});
 		p.parse(in, "");
+	}
+
+	private void addLink(String subj, String obj) {
+		if (!fwLinkMap.containsKey(subj)) fwLinkMap.put(subj, new HashSet<String>());
+		fwLinkMap.get(subj).add(obj);
+		if (!bwLinkMap.containsKey(obj)) bwLinkMap.put(obj, new HashSet<String>());
+		bwLinkMap.get(obj).add(subj);
+	}
+
+	private void mergeNodes() {
+		for (String node : bwLinkMap.keySet()) {
+			Set<String> bwLinks = bwLinkMap.get(node);
+			if (bwLinks.size() != 1) continue;
+			String m = bwLinks.iterator().next();
+			System.out.println("Merge " + node + " into " + m);
+			// TODO
+		}
+	}
+
+	private void showResults() {
+		System.out.println("FORWARD LINKS:");
+		for (String node : fwLinkMap.keySet()) {
+			System.out.println(node + ": " + fwLinkMap.get(node).size());
+		}
+		System.out.println("BACKWARD LINKS:");
+		for (String node : bwLinkMap.keySet()) {
+			System.out.println(node + ": " + bwLinkMap.get(node).size());
+		}
 	}
 
 }
