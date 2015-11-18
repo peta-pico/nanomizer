@@ -1,5 +1,6 @@
 package org.petapico.nanomizer;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -8,10 +9,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.zip.GZIPInputStream;
 
 import javax.activation.MimetypesFileTypeMap;
 
+import org.apache.commons.compress.compressors.CompressorException;
+import org.apache.commons.compress.compressors.CompressorStreamFactory;
 import org.nanopub.NanopubUtils;
 import org.openrdf.OpenRDFException;
 import org.openrdf.model.BNode;
@@ -38,7 +40,7 @@ public class Nanomize {
 	private static final Set<String> EMPTYSET = ImmutableSet.of();
 
 	private File file;
-	private boolean gzipped = false;
+	private String compressionFormat = null;
 	private RDFFormat format;
 
 	private Map<String,Set<String>> fwLinkMap = new HashMap<>();
@@ -56,8 +58,11 @@ public class Nanomize {
 		this.file = file;
 		String n = file.getName();
 		if (n.endsWith(".gz")) {
-			gzipped = true;
+			compressionFormat = CompressorStreamFactory.GZIP;
 			n = n.replaceFirst("\\.gz$", "");
+		} else if (n.endsWith(".bz2")) {
+			compressionFormat = CompressorStreamFactory.BZIP2;
+			n = n.replaceFirst("\\.bz2$", "");
 		}
 		format = Rio.getParserFormatForMIMEType(mimeMap.getContentType(n));
 		if (format == null || !format.supportsContexts()) {
@@ -89,9 +94,17 @@ public class Nanomize {
 	}
 
 	private InputStream getInputStream() throws IOException {
-		InputStream in = new FileInputStream(file);
-		if (gzipped) in = new GZIPInputStream(in);
-		return in;
+		InputStream in;
+		try {
+			if (compressionFormat == null) {
+				in = new FileInputStream(file);
+			} else {
+				in = new CompressorStreamFactory().createCompressorInputStream(compressionFormat, new FileInputStream(file));
+			}
+		} catch (CompressorException ex) {
+			in = new FileInputStream(file);
+		}
+		return new BufferedInputStream(in);
 	}
 
 	private void readData(InputStream in) throws OpenRDFException, IOException {
