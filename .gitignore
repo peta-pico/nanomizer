@@ -1,3 +1,4 @@
+
 *~
 /.classpath
 /.project
@@ -8,3 +9,4 @@
 /classpath.txt
 *.log
 local.*
+/data
