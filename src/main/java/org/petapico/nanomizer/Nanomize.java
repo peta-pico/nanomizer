@@ -36,8 +36,10 @@ public class Nanomize {
 	private File file;
 	private RDFFormat format;
 
-	private Map<String,Set<String>> fwLinkMap = new HashMap<String, Set<String>>();
-	private Map<String,Set<String>> bwLinkMap = new HashMap<String, Set<String>>();
+	private Map<String,Set<String>> fwLinkMap = new HashMap<>();
+	private Map<String,Set<String>> bwLinkMap = new HashMap<>();
+	private Map<String,String> mainNodeMap = new HashMap<>();
+	private Map<String,Set<String>> sideNodeMap = new HashMap<>();
 
 	public Nanomize(File file) {
 		this.file = file;
@@ -55,14 +57,15 @@ public class Nanomize {
 		System.out.println("Processing file: " + file);
 		InputStream in = new FileInputStream(file);
 		try {
-			processStream(in);
+			readData(in);
 		} finally {
 			in.close();
 		}
+		mergeNodes();
 		showResults();
 	}
 
-	private void processStream(InputStream in) throws OpenRDFException, IOException {
+	private void readData(InputStream in) throws OpenRDFException, IOException {
 		RDFParser p = NanopubUtils.getParser(format);
 		p.setRDFHandler(new RDFHandlerBase() {
 
@@ -86,6 +89,16 @@ public class Nanomize {
 		fwLinkMap.get(subj).add(obj);
 		if (!bwLinkMap.containsKey(obj)) bwLinkMap.put(obj, new HashSet<String>());
 		bwLinkMap.get(obj).add(subj);
+	}
+
+	private void mergeNodes() {
+		for (String node : bwLinkMap.keySet()) {
+			Set<String> bwLinks = bwLinkMap.get(node);
+			if (bwLinks.size() != 1) continue;
+			String m = bwLinks.iterator().next();
+			System.out.println("Merge " + node + " into " + m);
+			// TODO
+		}
 	}
 
 	private void showResults() {
