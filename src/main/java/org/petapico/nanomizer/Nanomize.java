@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.GZIPInputStream;
 
 import javax.activation.MimetypesFileTypeMap;
 
@@ -37,6 +38,7 @@ public class Nanomize {
 	private static final Set<String> EMPTYSET = ImmutableSet.of();
 
 	private File file;
+	private boolean gzipped = false;
 	private RDFFormat format;
 
 	private Map<String,Set<String>> fwLinkMap = new HashMap<>();
@@ -50,6 +52,10 @@ public class Nanomize {
 	public Nanomize(File file) {
 		this.file = file;
 		String n = file.getName();
+		if (n.endsWith(".gz")) {
+			gzipped = true;
+			n = n.replaceFirst("\\.gz$", "");
+		}
 		format = Rio.getParserFormatForMIMEType(mimeMap.getContentType(n));
 		if (format == null || !format.supportsContexts()) {
 			format = Rio.getParserFormatForFileName(n, RDFFormat.NTRIPLES);
@@ -62,6 +68,7 @@ public class Nanomize {
 	public void run() throws OpenRDFException, IOException {
 		System.out.println("Processing file: " + file);
 		InputStream in = new FileInputStream(file);
+		if (gzipped) in = new GZIPInputStream(in);
 		try {
 			readData(in);
 		} finally {
