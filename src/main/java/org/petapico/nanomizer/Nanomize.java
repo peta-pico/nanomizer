@@ -208,14 +208,32 @@ public class Nanomize {
 			}
 		}
 
-		System.out.println("PARTITION SIZE DISTRIBUTION:");
-		int[] countDist = new int[maxTripleCount+1];
+		System.out.println("DISTRIBUTION OF PARTITION SIZE (NUMBER OF TRIPLES):");
+		int[] tripleCountDist = new int[maxTripleCount+1];
 		for (String mainNode : tripleCount.keySet()) {
-			countDist[tripleCount.get(mainNode)]++;
+			tripleCountDist[tripleCount.get(mainNode)]++;
 		}
 		for (int i = 1 ; i <= maxTripleCount ; i++) {
-			if (countDist[i] == 0) continue;
-			System.out.println(i + ": " + countDist[i]);
+			if (tripleCountDist[i] == 0) continue;
+			System.out.println(i + ": " + tripleCountDist[i]);
+		}
+
+		System.out.println("DISTRIBUTION OF PARTITION SIZE (NUMBER OF NODES):");
+		int maxSideNodes = 1;
+		for (Set<String> s : sideNodeMap.values()) {
+			if (s.size() + 1 > maxSideNodes) maxSideNodes = s.size() + 1;
+		}
+		int[] nodeCountDist = new int[maxSideNodes+1];
+		for (String mainNode : tripleCount.keySet()) {
+			if (sideNodeMap.containsKey(mainNode)) {
+				nodeCountDist[sideNodeMap.get(mainNode).size()+1]++;
+			} else {
+				nodeCountDist[1]++;
+			}
+		}
+		for (int i = 1 ; i <= maxSideNodes ; i++) {
+			if (nodeCountDist[i] == 0) continue;
+			System.out.println(i + ": " + nodeCountDist[i]);
 		}
 
 		if (blankNodesEncountered) {
