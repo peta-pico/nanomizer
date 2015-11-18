@@ -23,6 +23,11 @@
       <artifactId>sesame-rio-nquads</artifactId>
       <version>${sesame.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.nanopub</groupId>
+      <artifactId>nanopub</artifactId>
+      <version>1.7</version>
+    </dependency>
   </dependencies>
 
   <build>
