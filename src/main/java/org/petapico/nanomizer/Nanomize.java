@@ -145,13 +145,12 @@ public class Nanomize {
 	}
 
 	private void showResults() {
-		System.out.println("FORWARD LINKS:");
-		for (String node : fwLinkMap.keySet()) {
-			System.out.println(node + ": " + fwLinkMap.get(node).size());
-		}
-		System.out.println("BACKWARD LINKS:");
-		for (String node : bwLinkMap.keySet()) {
-			System.out.println(node + ": " + bwLinkMap.get(node).size());
+		System.out.println("MAIN NODES:");
+		for (String node : sideNodeMap.keySet()) {
+			System.out.println(node + ":");
+			for (String side : sideNodeMap.get(node)) {
+				System.out.println("  " + side);
+			}
 		}
 	}
 
