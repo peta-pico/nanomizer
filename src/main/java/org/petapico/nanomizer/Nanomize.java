@@ -116,6 +116,7 @@ public class Nanomize {
 			}
 			in = getInputStream();
 			try {
+				System.out.println("Partition...");
 				makePartition(in);
 			} finally {
 				in.close();
@@ -169,7 +170,7 @@ public class Nanomize {
 	}
 
 	private void mergeNodes() {
-		System.out.println("RUN MERGE...");
+		System.out.println("Merge...");
 		boolean mergeHappened = false;
 		for (String node : bwLinkMap.keySet()) {
 			Set<String> bwLinks = bwLinkMap.get(node);
@@ -231,7 +232,7 @@ public class Nanomize {
 	}
 
 	private void showResults() throws IOException {
-		if (verbose) System.out.println("MAIN NODES:");
+		if (verbose) System.out.println("\nMAIN NODES:");
 		for (String node : sideNodeMap.keySet()) {
 			if (verbose) {
 				System.out.println(node + ":");
@@ -242,36 +243,40 @@ public class Nanomize {
 			getWriter("partitions").println(node);
 		}
 
-		System.out.println("DISTRIBUTION OF PARTITION SIZE (NUMBER OF TRIPLES):");
+		System.out.println("\nDISTRIBUTION OF PARTITION SIZE (NUMBER OF TRIPLES):");
 		int[] tripleCountDist = new int[maxTripleCount+1];
+		String[] tripleCountExample = new String[maxTripleCount+1];
 		for (String mainNode : tripleCount.keySet()) {
 			tripleCountDist[tripleCount.get(mainNode)]++;
+			tripleCountExample[tripleCount.get(mainNode)] = mainNode;
 		}
 		for (int i = 1 ; i <= maxTripleCount ; i++) {
 			if (tripleCountDist[i] == 0) continue;
-			System.out.println(i + ": " + tripleCountDist[i]);
+			System.out.println(i + ": " + tripleCountDist[i] + "    (e.g. " + tripleCountExample[i] + " )");
 		}
 
-		System.out.println("DISTRIBUTION OF PARTITION SIZE (NUMBER OF NODES):");
+		System.out.println("\nDISTRIBUTION OF PARTITION SIZE (NUMBER OF NODES):");
 		int maxSideNodes = 1;
 		for (Set<String> s : sideNodeMap.values()) {
 			if (s.size() + 1 > maxSideNodes) maxSideNodes = s.size() + 1;
 		}
 		int[] nodeCountDist = new int[maxSideNodes+1];
+		String[] nodeCountExample = new String[maxSideNodes+1];
 		for (String mainNode : tripleCount.keySet()) {
+			int i = 1;
 			if (sideNodeMap.containsKey(mainNode)) {
-				nodeCountDist[sideNodeMap.get(mainNode).size()+1]++;
-			} else {
-				nodeCountDist[1]++;
+				i = sideNodeMap.get(mainNode).size()+1;
 			}
+			nodeCountDist[i]++;
+			nodeCountExample[i] = mainNode;
 		}
 		for (int i = 1 ; i <= maxSideNodes ; i++) {
 			if (nodeCountDist[i] == 0) continue;
-			System.out.println(i + ": " + nodeCountDist[i]);
+			System.out.println(i + ": " + nodeCountDist[i] + "    (e.g. " + nodeCountExample[i] + " )");
 		}
 
 		if (blankNodesEncountered) {
-			System.out.println("WARNING: blank nodes encountered");
+			System.out.println("\nWARNING: blank nodes encountered");
 		}
 	}
 
