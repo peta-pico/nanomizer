@@ -36,6 +36,9 @@ public class Nanomize {
 	@Parameter(description = "input-file", required = true)
 	private List<File> files;
 
+	@Parameter(names = "-v", description = "verbose")
+	private boolean verbose = false;
+
 	public static void main(String[] args) throws OpenRDFException, IOException {
 		Nanomize obj = new Nanomize();
 		JCommander jc = new JCommander(obj);
@@ -161,7 +164,7 @@ public class Nanomize {
 			Set<String> bwLinks = bwLinkMap.get(node);
 			if (bwLinks.size() != 1) continue;
 			String m = bwLinks.iterator().next();
-			System.out.println("Merge " + node + " into " + m);
+			if (verbose) System.out.println("Merge " + node + " into " + m);
 			if (fwLinkMap.containsKey(node)) {
 				for (String s : fwLinkMap.get(node)) {
 					if (s.equals(m)) continue;
@@ -217,11 +220,13 @@ public class Nanomize {
 	}
 
 	private void showResults() {
-		System.out.println("MAIN NODES:");
-		for (String node : sideNodeMap.keySet()) {
-			System.out.println(node + ":");
-			for (String side : sideNodeMap.get(node)) {
-				System.out.println("  " + side);
+		if (verbose) {
+			System.out.println("MAIN NODES:");
+			for (String node : sideNodeMap.keySet()) {
+				System.out.println(node + ":");
+				for (String side : sideNodeMap.get(node)) {
+					System.out.println("  " + side);
+				}
 			}
 		}
 
