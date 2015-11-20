@@ -1,10 +1,13 @@
 package org.petapico.nanomizer;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -55,6 +58,7 @@ public class Nanomize {
 
 	private static final MimetypesFileTypeMap mimeMap = new MimetypesFileTypeMap();
 	private static final Set<String> EMPTYSET = ImmutableSet.of();
+	private static final File outputDir = new File("output");
 
 	private File file;
 	private String compressionFormat = null;
@@ -72,6 +76,8 @@ public class Nanomize {
 	private Map<String,Integer> tripleCount = new HashMap<>();
 
 	private boolean blankNodesEncountered = false;
+
+	private Map<String,PrintStream> writers = new HashMap<>();
 
 	public void init() {
 		if (files.size() > 1) {
@@ -93,26 +99,31 @@ public class Nanomize {
 		if (!format.supportsContexts()) {
 			format = RDFFormat.NTRIPLES;
 		}
+		if (!outputDir.exists()) outputDir.mkdir();
 	}
 
 	public void run() throws OpenRDFException, IOException {
-		System.out.println("Processing file: " + file);
-		InputStream in = getInputStream();
 		try {
-			readData(in);
+			System.out.println("Processing file: " + getFileNameBase());
+			InputStream in = getInputStream();
+			try {
+				readData(in);
+			} finally {
+				in.close();
+			}
+			while (!mergeComplete) {
+				mergeNodes();
+			}
+			in = getInputStream();
+			try {
+				makePartition(in);
+			} finally {
+				in.close();
+			}
+			showResults();
 		} finally {
-			in.close();
+			closeStreams();
 		}
-		while (!mergeComplete) {
-			mergeNodes();
-		}
-		in = getInputStream();
-		try {
-			makePartition(in);
-		} finally {
-			in.close();
-		}
-		showResults();
 	}
 
 	private InputStream getInputStream() throws IOException {
@@ -219,15 +230,16 @@ public class Nanomize {
 		p.parse(in, "");
 	}
 
-	private void showResults() {
-		if (verbose) {
-			System.out.println("MAIN NODES:");
-			for (String node : sideNodeMap.keySet()) {
+	private void showResults() throws IOException {
+		if (verbose) System.out.println("MAIN NODES:");
+		for (String node : sideNodeMap.keySet()) {
+			if (verbose) {
 				System.out.println(node + ":");
 				for (String side : sideNodeMap.get(node)) {
 					System.out.println("  " + side);
 				}
 			}
+			getWriter("partitions").println(node);
 		}
 
 		System.out.println("DISTRIBUTION OF PARTITION SIZE (NUMBER OF TRIPLES):");
@@ -261,6 +273,24 @@ public class Nanomize {
 		if (blankNodesEncountered) {
 			System.out.println("WARNING: blank nodes encountered");
 		}
+	}
+
+	private PrintStream getWriter(String name) throws IOException {
+		if (!writers.containsKey(name)) {
+			writers.put(name, new PrintStream(new BufferedOutputStream(new FileOutputStream(
+					new File(outputDir, getFileNameBase() + "-" + name + ".txt")))));
+		}
+		return writers.get(name);
+	}
+
+	private void closeStreams() {
+		for (PrintStream ps : writers.values()) {
+			ps.close();
+		}
+	}
+
+	private String getFileNameBase() {
+		return file.getName().replaceFirst("\\.(bz2|gz)$", "").replaceFirst("\\.[a-z]{2,4}$", "");
 	}
 
 }

@@ -10,3 +10,4 @@
 *.log
 local.*
 /data
+/output
