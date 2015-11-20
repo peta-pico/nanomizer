@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -25,15 +26,28 @@ import org.openrdf.rio.RDFParser;
 import org.openrdf.rio.Rio;
 import org.openrdf.rio.helpers.RDFHandlerBase;
 
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParameterException;
 import com.google.common.collect.ImmutableSet;
 
 public class Nanomize {
 
+	@Parameter(description = "input-file", required = true)
+	private List<File> files;
+
 	public static void main(String[] args) throws OpenRDFException, IOException {
-		for (String filename : args) {
-			Nanomize r = new Nanomize(new File(filename));
-			r.run();
+		Nanomize obj = new Nanomize();
+		JCommander jc = new JCommander(obj);
+		try {
+			jc.parse(args);
+		} catch (ParameterException ex) {
+			jc.usage();
+			System.exit(1);
 		}
+		obj.init();
+		obj.run();
+		System.exit(0);
 	}
 
 	private static final MimetypesFileTypeMap mimeMap = new MimetypesFileTypeMap();
@@ -56,8 +70,11 @@ public class Nanomize {
 
 	private boolean blankNodesEncountered = false;
 
-	public Nanomize(File file) {
-		this.file = file;
+	public void init() {
+		if (files.size() > 1) {
+			throw new RuntimeException("More than one input file found");
+		}
+		file = files.get(0);
 		String n = file.getName();
 		if (n.endsWith(".gz")) {
 			compressionFormat = CompressorStreamFactory.GZIP;
